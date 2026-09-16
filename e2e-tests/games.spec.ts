@@ -24,6 +24,33 @@ test.describe('Game Listing and Navigation', () => {
     });
   });
 
+  test('should filter games by category and preserve the filter in the URL', async ({ page }) => {
+    await page.goto('/');
+
+    const categoryFilter = page.getByTestId(/^category-filter-/).first();
+    await categoryFilter.check();
+    await page.getByTestId('apply-filters').click();
+
+    await expect(page).toHaveURL(/category=\d+/);
+    await expect(page.getByTestId('filter-status')).toContainText(/game/);
+    await expect(categoryFilter).toBeChecked();
+  });
+
+  test('should combine category and publisher filters and clear them', async ({ page }) => {
+    await page.goto('/');
+
+    await page.getByTestId(/^category-filter-/).first().check();
+    await page.getByTestId('publisher-filter').selectOption({ index: 1 });
+    await page.getByTestId('apply-filters').click();
+
+    await expect(page).toHaveURL(/category=\d+.*publisher=\d+|publisher=\d+.*category=\d+/);
+    await expect(page.getByTestId('filter-status')).toContainText(/match the selected filters/);
+
+    await page.getByTestId('clear-filters').click();
+    await expect(page).toHaveURL('/');
+    await expect(page.getByTestId('filter-status')).toContainText(/available/);
+  });
+
   test('should navigate to correct game details page when clicking on a game', async ({ page }) => {
     let gameId: string | null;
     let gameTitle: string | null;

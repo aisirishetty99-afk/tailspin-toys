@@ -56,6 +56,18 @@ describe('parseGamesCsv', () => {
         const rows = parseGamesCsv('Title,Category,Publisher,Description\n,,,');
         expect(rows).toHaveLength(0);
     });
+
+    it('trims values and tolerates missing optional fields in lowercase headers', () => {
+        const rows = parseGamesCsv('\uFEFFtitle,category,publisher,description\n  "Game A"  ,  "Strategy" , ,  "  Desc A  "  ');
+        expect(rows).toEqual([
+            {
+                title: 'Game A',
+                category: 'Strategy',
+                publisher: '',
+                description: 'Desc A',
+            },
+        ]);
+    });
 });
 
 describe('description helpers', () => {
@@ -75,6 +87,10 @@ describe('description helpers', () => {
         expect(gameDescription('A great game.')).toBe(
             'A great game. Support this game through our crowdfunding platform!',
         );
+    });
+
+    it('handles empty descriptions without a leading space', () => {
+        expect(gameDescription('   ')).toBe('Support this game through our crowdfunding platform!');
     });
 });
 
