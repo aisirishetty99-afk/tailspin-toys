@@ -220,4 +220,42 @@ test.describe('Accessibility Tests', () => {
       await expect(gameCardSvgs.nth(i)).toHaveAttribute('aria-hidden', 'true');
     }
   });
+
+  test('high contrast mode should toggle and persist across reloads', async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(() => {
+      localStorage.removeItem('tailspin-high-contrast');
+      document.documentElement.classList.remove('high-contrast');
+    });
+
+    const toggle = page.getByTestId('high-contrast-toggle');
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('html')).toHaveClass(/high-contrast/);
+
+    const highContrastScan = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .analyze();
+    expect(highContrastScan.violations).toEqual([]);
+
+    await page.reload();
+    await expect(page.getByTestId('high-contrast-toggle')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('html')).toHaveClass(/high-contrast/);
+
+    await page.getByTestId('high-contrast-toggle').click();
+    await expect(page.getByTestId('high-contrast-toggle')).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.locator('html')).not.toHaveClass(/high-contrast/);
+  });
+
+  test('skip link should move focus to the main content landmark', async ({ page }) => {
+    await page.goto('/');
+    const skipLink = page.getByTestId('skip-to-content');
+
+    await skipLink.focus();
+    await expect(skipLink).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#main-content')).toBeFocused();
+  });
 });
