@@ -13,6 +13,20 @@ export interface GameCsvRow {
 
 const CROWDFUNDING_BLURB = ' Support this game through our crowdfunding platform!';
 
+function normalizeCsvValue(value: string | undefined): string {
+    return (value ?? '').replace(/^\uFEFF/, '').trim();
+}
+
+function getCsvValue(row: Record<string, string>, key: string): string {
+    const lookup = key.replace(/^\uFEFF/, '').trim().toLowerCase();
+    const match = Object.entries(row).find(([header]) => {
+        const normalized = header.replace(/^\uFEFF/, '').trim().toLowerCase();
+        return normalized === lookup;
+    });
+
+    return normalizeCsvValue(match?.[1]);
+}
+
 /**
  * Minimal RFC-4180-style CSV parser supporting quoted fields, escaped quotes
  * (""), and newlines inside quoted values. Returns rows keyed by header name.
@@ -77,7 +91,7 @@ export function parseCsv(content: string): Record<string, string>[] {
     return rows.map((row) => {
         const entry: Record<string, string> = {};
         header.forEach((key, index) => {
-            entry[key] = row[index] ?? '';
+            entry[normalizeCsvValue(key)] = row[index] ?? '';
         });
         return entry;
     });
@@ -86,35 +100,38 @@ export function parseCsv(content: string): Record<string, string>[] {
 /** Parse the games seed CSV into typed rows. */
 export function parseGamesCsv(content: string): GameCsvRow[] {
     return parseCsv(content)
-        .filter((row) => (row.Title ?? '').trim().length > 0)
+        .filter((row) => getCsvValue(row, 'Title').length > 0)
         .map((row) => ({
-            title: row.Title.trim(),
-            category: row.Category.trim(),
-            publisher: row.Publisher.trim(),
-            description: row.Description.trim(),
+            title: getCsvValue(row, 'Title'),
+            category: getCsvValue(row, 'Category'),
+            publisher: getCsvValue(row, 'Publisher'),
+            description: getCsvValue(row, 'Description'),
         }));
 }
 
 export function categoryDescription(name: string): string {
-    return `Collection of ${name} games available for crowdfunding`;
+    const normalized = normalizeCsvValue(name);
+    return `Collection of ${normalized} games available for crowdfunding`;
 }
 
 export function publisherDescription(name: string): string {
-    return `${name} is a game publisher seeking funding for exciting new titles`;
+    const normalized = normalizeCsvValue(name);
+    return `${normalized} is a game publisher seeking funding for exciting new titles`;
 }
 
 export function gameDescription(rawDescription: string): string {
-    return rawDescription + CROWDFUNDING_BLURB;
+    const description = normalizeCsvValue(rawDescription);
+    return description ? `${description}${CROWDFUNDING_BLURB}` : CROWDFUNDING_BLURB.trimStart();
 }
 
 /** Distinct category names in first-seen order. */
 export function uniqueCategories(rows: GameCsvRow[]): string[] {
-    return [...new Set(rows.map((row) => row.category))];
+    return [...new Set(rows.map((row) => normalizeCsvValue(row.category)).filter(Boolean))];
 }
 
 /** Distinct publisher names in first-seen order. */
 export function uniquePublishers(rows: GameCsvRow[]): string[] {
-    return [...new Set(rows.map((row) => row.publisher))];
+    return [...new Set(rows.map((row) => normalizeCsvValue(row.publisher)).filter(Boolean))];
 }
 
 /**

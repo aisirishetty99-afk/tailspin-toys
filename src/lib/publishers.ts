@@ -10,6 +10,7 @@ import type { Database } from './db';
 import { publishers } from '../../db/schema';
 import type { Publisher } from '../types/game';
 
+
 type PublisherRow = {
     id: number;
     name: string;
